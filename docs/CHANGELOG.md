@@ -8,3 +8,4 @@ One line per merged task. Details in `docs/changelogs/`.
 - 04 · Intake agent: typed, normalised books and supplier rows, invoice-number keys, data-quality issues instead of crashes, line-ending-proof input hash.
 - 05 · Matcher: five one-to-one passes (exact, normalised, no-year, GSTIN repair, fuzzy), duplicates, paise comparisons with the Rs 1 tolerance, order-independent, ties to a person; agrees with all 593 generated labels.
 - 06 · Store and tracing: SQLite schema (WAL, foreign keys, numbered migrations), idempotent approvals and outbox (safe under 8 threads), paid-call ledger, append-only audit log, trace spans with cost and latency.
+- 07 · LLM client layer: one client for Bedrock Nova, Claude and a fake; cost estimates, project and run budgets, full-jitter retries, pacer, paid-call ledger, record/replay. Live probes: USD 0.00084.

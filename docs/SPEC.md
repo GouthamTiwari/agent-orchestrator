@@ -58,7 +58,7 @@ Same AWS account, key and region as the sibling projects. The account is AISPL (
 | Role | Model ID | Where | Price (USD per 1M tokens, in / out) | Notes |
 |---|---|---|---|---|
 | Vision extraction (first pass) | `global.amazon.nova-2-lite-v1:0` | `ap-south-1` (Mumbai), global inference profile | 0.35 / 2.95 | accepts PNG/JPEG/GIF/WebP images; **billed a flat 230 input tokens per image** (Nova 2 user guide); structured-outputs feature **not supported**, so JSON is enforced by our schema guard + retry |
-| Vision escalation (low confidence only) | `apac.amazon.nova-pro-v1:0` | APAC geo profile from `ap-south-1` | 0.94 / 3.76 | image input supported; already used by regulatory-rag (Tokyo); **verify from Mumbai in Task 07** |
+| Vision escalation (low confidence only) | `apac.amazon.nova-pro-v1:0` | APAC geo profile from `ap-south-1` | 0.94 / 3.76 | image input supported; already used by regulatory-rag (Tokyo); **verified from Mumbai 2026-11-23** (Task 07 probe) |
 | Planner, rule summary, e-mail drafts, report summary, single-LLM baseline | `global.amazon.nova-2-lite-v1:0` | `ap-south-1` | 0.35 / 2.95 | text (baseline also gets images) |
 | **Main test only** (decision 2): extraction + planner + baseline on the test split | `claude-haiku-5-5` via the Anthropic API (his key, about USD 4) | api.anthropic.com | 0.10 / 0.50 (prompts up to 100K tokens; Claude price table cached 2026-11-03, **re-check before the run**) | never used in development; ask before every run; do not send `temperature` (rejected on the current API version) |
 
@@ -66,7 +66,8 @@ Prices come from the official AWS price-list file for `ap-south-1` (publication 
 
 Two risks, written down so nobody is surprised:
 - The Nova 2 Lite model card says "EOL no sooner than Dec 02, 2026" with "legacy period at least 6 months". It is Active today, and the legacy period covers this project. Model IDs come from `.env`, so a swap is a config change.
-- The Nova 2 guide's size table appears to cap **embedded images per request at 5** (25 MB). This only matters for the single-LLM baseline (section 15.5), which packs 4 invoice pages into one image. **Verify the real limit in Task 07** with one cheap call.
+- Embedded images per request: the Nova 2 guide's size table looked like a cap of 5. **Task 07 probe (2026-11-23): 6 images in one request were accepted** (1,451 input tokens = 6 x 230 + text), so the limit is at least 6. This only matters for the single-LLM baseline (section 15.5). Task 19 sends one probe with a full month's image count (about 20) before the baseline run.
+- Task 07 also showed Nova 2 Lite wraps JSON answers in ```json fences and writes amounts as `Rs 47,300.00`; the extraction agent's schema guard strips fences and normalises amounts (Task 09).
 
 **Auth:** reuse the Bedrock API key (`AWS_BEARER_TOKEN_BEDROCK`) from the sibling projects' `.env`, copied by a script that never prints it. IAM keys (`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`) also work through boto3's normal chain. The Anthropic key goes in `ANTHROPIC_API_KEY` and is read only by `--provider anthropic`.
 
@@ -536,7 +537,7 @@ Every live run records each model request/response to `data/recordings/<suite>.j
 
 ### 15.5 Single-LLM baseline (`eval/baseline.py`)
 - One call per business-month to the same model (Nova 2 Lite; Claude Haiku 5.5 in the main test) with the books CSV, the 2B JSON and the invoice images, asked to return a status and action per invoice as JSON.
-- Because Nova appears to accept at most 5 embedded images (verify in Task 07), invoice pages are packed **4 per image (2×2 grid)**, so 20 invoices fit in 5 images; months with more PDFs are split into 2 calls (stated in the report). Claude gets one image per invoice.
+- Nova accepted 6 images in one request (Task 07). Task 19 first probes a full month's image count; if it is accepted, the baseline gets **one image per invoice** (as Claude does). Only if it is rejected are pages packed **4 per image (2×2 grid)**, which the report then states.
 - Its actions are treated as executed automatically (that is what "just ask the LLM" means in practice), and scored with the same metrics.
 - Extra row: **baseline + our policy engine** (baseline's proposed actions passed through the policy with our deterministic facts) to separate "the policy helps" from "the agent split helps".
 - The report says plainly where the single call is as good or better (we expect easy matched cases) and what the structure costs.
@@ -584,7 +585,7 @@ orchestrator ask "QUESTION" [--case CASE_KEY]    # GST question answered by Regu
 3. **Regulatory RAG needed an upgrade first:** its GST corpus had circulars but not the CGST Act/Rules text that the core ITC rules live in. It is upgraded (spec 12.1) and is then the rule source on Goutham's PC; the saved CBIC text (`data/rules/sources/`) is the offline fallback for CI.
 4. **Semantic cache adds little for rule research** (queries are templated, so exact keys hit). It is wired for the MCP `search_rules` tool, where queries are free text. The README says this.
 5. **Extraction reads images, not PDFs**, even though the seed PDFs have a text layer; the text layer is only an extra injection scan.
-6. **Baseline packs 4 invoices per image** on Nova (image limit). Stated next to the results.
+6. **Baseline image packing** depends on the image-count probe in Task 19 (one image per invoice if accepted, else 4 per image). Stated next to the results.
 7. **Single-LLM "baseline + policy" row** added (not in the brief) to isolate where the value comes from.
 8. **OpenTelemetry not used:** a JSON trace + SQLite spans + Prometheus is enough for one local process and easier to learn from. Can be added later.
 
