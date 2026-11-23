@@ -1,0 +1,28 @@
+# Evaluation dataset settings (docs/SPEC.md section 15.1). Changing any value changes the
+# generated data, so the committed labels in data/labels/ must be regenerated with it.
+seed: 2611
+periods: ["2026-08", "2026-09", "2026-10"]
+businesses: 10
+suppliers_per_business: [8, 12]   # inclusive range
+cases_per_month: [18, 22]         # inclusive range of labels per business-month
+rates: [5, 18]                    # both appear in every month
+taxable_rupees: [5000, 400000]    # inclusive range, multiples of 50
+auto_hold_ceiling_rupees: 50000   # decision 1: clean missing_in_2b auto-hold only up to this tax
+injection_every_other_month: true # at least one injection invoice in 1 of every 2 months
+hard_negatives_per_month: [1, 2]
+no_pdf_share: 0.05                # book lines with no invoice PDF (never auto-actioned)
+noisy_share: 0.40                 # invoices that also get a noisy scan image
+supplier_languages: {en: 0.6, hi: 0.2, te: 0.2}
+quarterly_filer_share: 0.25
+noise:
+  rotate_degrees: 3.0             # uniform in [-3, +3]
+  blur_sigma: [0.6, 1.2]
+  jpeg_quality: [30, 50]
+  contrast: [0.7, 1.1]
+  render_dpi: 150
+# A Devanagari font for the Hindi injection variant. The first path that exists is used.
+# Generated PDFs are local test data (data/generated/ is not committed).
+devanagari_fonts:
+  - C:/Windows/Fonts/Nirmala.ttc
+  - /usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf
+  - /usr/share/fonts/opentype/noto/NotoSansDevanagari-Regular.ttf

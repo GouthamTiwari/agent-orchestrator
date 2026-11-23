@@ -26,7 +26,7 @@ uv run orchestrator version
 uv run pytest
 ```
 
-All business data in this repo is synthetic: company names, GSTINs and invoices are fictional.
+All business data in this repo is synthetic: company names, GSTINs and invoices are fictional. The evaluation set (`orchestrator dataset generate`) has 593 labelled cases from 10 fictional businesses over 3 months; its labels are assistant-reviewed, and the human spot-check is pending.
 
 **This is not tax advice.** It is an engineering project that shows how to keep LLM agents inside rules a person can audit.
 

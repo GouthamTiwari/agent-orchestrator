@@ -1,0 +1,5 @@
+{
+  "_note": "Split by business so no buyer or supplier appears in both. Thresholds and prompts are tuned on dev only; test is used once for the final Nova run and once for the Claude main test.",
+  "dev": ["B01", "B02", "B03", "B04", "B05"],
+  "test": ["B06", "B07", "B08", "B09", "B10"]
+}
