@@ -60,7 +60,7 @@ Nothing new is needed in the AWS console: Nova 2 Lite in `ap-south-1` already wo
 **Why:** clean, typed records and data-quality issues before anything expensive runs.
 **Acceptance:**
 - [ ] Spec 4.1, 4.2, 4.4 and 6.1 exactly; `input_hash` stable across OS line endings.
-- [ ] Seed month: 18 book lines, 17 portal rows, 1 checksum-invalid GSTIN issue (case13), duplicate line hashes detected.
+- [ ] Seed month: 18 book lines, 16 portal rows (18 cases minus the 2 missing from 2B), 1 checksum-invalid GSTIN issue (case13), duplicate line hashes detected.
 - [ ] Bad CSV header → clear error; a bad row → `DQIssue` with line number, run continues.
 - [ ] Normalisation table tests: `ABC/2026/0107`, `abc-2026-107`, ` abc 2026 0107 ` → same `inv_key`; FY tokens dropped only in `inv_key_noyear`.
 

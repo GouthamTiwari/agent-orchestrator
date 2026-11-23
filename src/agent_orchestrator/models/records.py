@@ -23,7 +23,7 @@ class BookRecord(Frozen):
     supplier_gstin: str  # normalised (uppercase, no spaces) but possibly a typo
     gstin_valid: bool
     taxable_paise: NonNegativePaise
-    rate: int = Field(ge=0, le=28)
+    rate: int = Field(ge=0, le=40)  # GST slabs include 40% since 22 Sep 2025
     igst_paise: NonNegativePaise
     cgst_paise: NonNegativePaise
     sgst_paise: NonNegativePaise
@@ -41,7 +41,7 @@ class PortalRecord(Frozen):
     supplier_name: str
     supplier_gstin: str
     taxable_paise: NonNegativePaise
-    rate: int = Field(ge=0, le=28)
+    rate: int = Field(ge=0, le=40)  # GST slabs include 40% since 22 Sep 2025
     igst_paise: NonNegativePaise
     cgst_paise: NonNegativePaise
     sgst_paise: NonNegativePaise
