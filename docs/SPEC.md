@@ -124,7 +124,7 @@ llm/           client.py (Bedrock + Anthropic + fake), pricing.py, budget.py, re
                ledger.py (paid-call cache), recording.py (record/replay), prompts/*.txt
 interfaces/    protocols.py (Guard, RuleRetriever, Cache), stubs.py, adapters.py
 store/         db.py (SQLite schema + migrations), repo.py (typed read/write), idempotency.py
-orchestrator/  state.py, graph.py (the only LangGraph code), runner.py (start/resume/kill-safe)
+orchestrator/  graph.py (the only LangGraph code), runner.py (start/resume/kill-safe)
 tools/         mcp_server.py, toolfns.py (the tool functions, shared with the API)
 web/           app.py (FastAPI), templates/*.html, static/htmx.min.js, metrics.py
 tracing.py     spans, cost per agent, JSON export
@@ -219,7 +219,7 @@ class ApprovalRecord: approval_id; idempotency_key; case_key; run_id; proposed:A
 class DraftEmail:     idempotency_key; case_key; to_supplier_gstin; subject; body; language; created_at
 ```
 
-The **graph state** (`orchestrator/state.py`, `TypedDict`):
+The **graph state** (`models/state.py`, `TypedDict`; the graph code imports it from there):
 
 ```python
 class RunState(TypedDict):
@@ -435,7 +435,7 @@ A refused write increments `orchestrator_refused_writes_total` and writes `audit
 
 - `/` runs list → `/runs/{id}` summary, partial report, budget, "Resume run" button (enabled when every pending approval is decided).
 - `/approvals` pending queue, oldest first.
-- `/approvals/{id}`: the case; **evidence side by side** (books row, 2B row, PDF page image with extracted fields and confidences); the rule summary and its citations (links to the CBIC pages); the proposed action and reason; the policy rules that fired; buttons **Approve**, **Edit** (dropdown limited to `allowed_actions` for that mismatch type), **Reject** (reason required).
+- `/approvals/{id}`: the case; **evidence side by side** (books row, 2B row, PDF page image with extracted fields and confidences); the rule summary and its citations (links to the CBIC pages); the proposed action and reason; the policy rules that fired; buttons **Approve**, **Edit** (dropdown limited to `allowed_actions` for that mismatch type), **Reject** (reason required; the case stays with a person, so its final action is `escalate_human`).
 - **Ask box** on `/approvals/{id}`: a free-text GST question sent to `regrag.api.answer` (with the case's mismatch type as context, never document text); the answer shows its citations or says it does not know. Answers are not inputs to the policy; they only help the human decide. Hidden when the RAG is not installed.
 - `/runs/{id}/trace`: timeline (one bar per span, coloured by agent, with tokens/USD/latency).
 - Every decision logs who (`APPROVER_NAME` from `.env`, default the OS user), when, before → after, reason. Edits and rejections are appended to `eval/human_feedback.jsonl` (gitignored).
