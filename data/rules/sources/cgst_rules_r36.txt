@@ -1,0 +1,127 @@
+Source: https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter5/rule36_v1.00.html
+Retrieved: 2026-11-23 (official CBIC tax information portal). Verbatim text of the provision as published; not legal advice.
+
+Rule 36
+
+Rule 36.
+ Documentary requirements and conditions for claiming input tax credit.-
+
+(1)
+ The input tax credit shall be availed by a registered person,
+ including the Input Service Distributor, on the basis of any of the
+ following documents, namely,-
+
+(a)
+ an invoice issued by the supplier of goods or services or both in
+ accordance with the provisions of section
+ 31;
+
+(b)
+ an invoice issued in accordance with the provisions of clause (f) of
+ sub-section (3) of section
+ 31, subject to the payment of tax;
+
+(c)
+ a debit note issued by a supplier in accordance with the provisions of section
+ 34;
+
+(d)
+ a bill of entry or any similar document prescribed under the Customs
+ Act, 1962 or rules made thereunder for the assessment of integrated
+ tax on imports;
+
+(e)
+ an Input Service Distributor invoice or Input Service Distributor
+ credit note or
+ any document issued by an Input Service Distributor in accordance with
+ the provisions of sub-rule (1) of rule
+ 54.
+
+(2)
+ Input tax credit shall be availed by a registered person only if all
+ the applicable particulars as specified in the provisions of Chapter
+ VI are contained in the said document 1[****]:
+
+2[Provided that
+ if the said document does not contain all the specified particulars
+ but contains the details of the amount of tax charged, description of
+ goods or services, total value of supply of goods or services or both,
+ GSTIN of the supplier and recipient and place of supply in case of
+ inter-State supply, input tax credit may be availed by such registered
+ person.]
+
+(3)
+ No input tax credit shall be availed by a registered person in respect
+ of any tax that has been paid in pursuance of any order where any
+ demand has been confirmed on account of any fraud, willful misstatement or
+ suppression of facts 6[under section 74].
+
+3[(4)
+ No input tax credit shall be availed by a registered person in respect
+ of invoices or debit notes the details of which are required to be
+ furnished under subsection (1) of section
+ 37 unless,-
+
+(a)
+ the details of such invoices or debit notes have been furnished by the
+ supplier in the statement of outward supplies in FORM GSTR-1 5[,
+ as amended in FORM GSTR-1A if any,] or
+ using the invoice furnishing facility; and
+
+(b)
+ the details of 4[input
+ tax credit in respect of] such invoices or debit notes have been
+ communicated to the registered person in FORM GSTR-2B under sub-rule (7) of rule
+ 60.]
+
+1.
+ Omitted (w.e.f. 01.10.2022) vide Notification
+ No. 19/2022 -
+ CT dated 28.09.2022
+
+2. Inserted
+ vide Notification
+ No.39/2018-CT dated 04.09.2018
+
+3.
+ Substituted (w.e.f. 01.01.2022) vide Notification
+ No. 40/2021- CT dated 29.12.2021 for 
+
+"(4)
+ Input tax credit to be availed by a registered person in respect of
+ invoices or debit notes, the details of which have not been
+ furnished by the suppliers under sub-section (1) of section 37, in
+ FORM GSTR-1 or using the invoice furnishing facility shall not
+ exceed 5 per cent. of the eligible credit available in respect of
+ invoices or debit notes the details of which have been furnished by
+ the suppliers under sub-section (1) of section 37 in FORM GSTR-1 or
+ using the invoice furnishing facility.
+
+ Provided that the said condition shall apply cumulatively for the
+ period February, March, April, May, June, July and August, 2020 and
+ the return in FORM GSTR-3B for the tax period September, 2020 shall
+ be furnished with the cumulative adjustment of input tax credit for
+ the said months in accordance with the condition above.
+
+ Provided further that such condition shall apply cumulatively for
+ the period April, May and June, 2021 and the return in FORM GSTR-3B
+ for the tax period June, 2021 or quarter ending June, 2021, as the
+ case may be, shall be furnished with the cumulative adjustment of
+ input tax credit for the said months in accordance with the
+ condition above."
+
+4.
+ Inserted (w.e.f.
+ 01.10.2022) vide Notification
+ No. 19/2022 -
+ CT dated 28.09.2022.
+
+5. Inserted 
+ vide Notification
+ No. 12/2024 -
+ CT dated 10.07.2024.
+
+6. Inserted
+ vide Notification
+ No. 20/2024 -
+ CT dated 08.10.2024.

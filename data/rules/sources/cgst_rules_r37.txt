@@ -1,0 +1,18 @@
+Source: https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter5/rule37_v1.00.html
+Retrieved: 2026-11-23 (official CBIC tax information portal). Verbatim text of the provision as published; not legal advice.
+
+Rule 37. Reversal of input tax credit in the case of non-payment of consideration.- 
+
+1[(1) A registered person, who has availed of input tax credit on any inward supply of goods or services or both, other than the supplies on which tax is payable on reverse charge basis, but fails to pay to the supplier thereof, the amount towards the value of such supply 3[whether wholly or partly,] along with the tax payable thereon, within the time limit specified in the second proviso to sub-section(2) of section 16, shall pay 4[or reverse] an amount equal to the input tax credit availed in respect of such supply 5[, proportionate to the amount not paid to the supplier,] along with interest payable thereon under section 50, while furnishing the return in FORM GSTR-3B for the tax period immediately following the period of one hundred and eighty days from the date of the issue of the invoice:
+Provided that the value of supplies made without consideration as specified in Schedule I of the said Act shall be deemed to have been paid for the purposes of the second proviso to sub-section (2) of section 16:
+Provided further that the value of supplies on account of any amount added in accordance with the provisions of clause (b) of sub-section (2) of section 15 shall be deemed to have been paid for the purposes of the second proviso to sub-section (2) of section 16.
+(2) Where the said registered person subsequently makes the payment of the amount towards the value of such supply along with tax payable thereon to the supplier thereof, he shall be entitled to re-avail the input tax credit referred to in sub-rule (1).]
+(3) 2[****]
+
+ (4)The time limit specified in sub-section (4) of section 16 shall not apply to a claim for re-availing of any credit, in accordance with the provisions of the Act or the provisions of this Chapter, that had been reversed earlier.
+
+ 1. Substituted (w.e.f. 01.10.2022) vide Notification No. 19/2022 - CT dated 28.09.2022.
+2. Omitted (w.e.f. 01.10.2022) vide Notification No. 19/2022 - CT dated 28.09.2022.
+3. Inserted (w.e.f. 01.10.2022) vide Notification No. 26/2022-CT dated 26.12.2022.
+4. Inserted (w.e.f. 01.10.2022) vide Notification No. 26/2022-CT dated 26.12.2022.
+5. Inserted (w.e.f. 01.10.2022) vide Notification No. 26/2022-CT dated 26.12.2022.

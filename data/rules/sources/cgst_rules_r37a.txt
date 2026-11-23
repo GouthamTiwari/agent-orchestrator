@@ -1,0 +1,51 @@
+Source: https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter5/rule37a_v1.00.html
+Retrieved: 2026-11-23 (official CBIC tax information portal). Verbatim text of the provision as published; not legal advice.
+
+Rule 37A
+
+1[Rule 37A. Reversal
+ of input tax credit in the case of non-payment of tax by the supplier
+ and re-availment thereof.-
+
+Where 
+ input tax credit has been availed 
+ by a registered person in the 
+ return in FORM
+ GSTR-3B for a tax period in respect of
+ such invoice or debit note, the details of which have been 
+ furnished by the supplier in the 
+ statement of outward supplies in FORM
+ GSTR-1 1[, as amended in FORM GSTR-1A
+ if any,] or using the invoice furnishing facility,
+ but the return in FORM
+ GSTR-3B for the tax period
+ corresponding to the said statement of outward supplies has not been
+ furnished by such supplier till the 30th day 
+ of September following the end of financial year in which the input tax
+ credit in respect of such invoice or debit note has been availed, the said
+ amount of input tax credit shall be reversed by the said registered
+ person, while furnishing a return in FORM
+ GSTR-3B on or before the 30th day of
+ November following the end of such financial year:
+
+Provided that
+ where the said amount of input tax credit is not reversed by the
+ registered person in a return in FORM GSTR-3B on
+ or before the 30th day of November following the end of such financial
+ year during which such input tax credit 
+ has been availed, such amount shall be payable by the
+ said person along with interest thereon under section
+ 50.
+
+Provided further
+ that where the said supplier subsequently furnishes the return in FORM
+ GSTR-3B for the said tax period, the
+ said registered person may re-avail the amount of such credit in the
+ return in FORM
+ GSTR-3B for a tax period thereafter.]
+
+1.
+ Inserted vide Notification
+ No. 12/2024
+ -
+ CT dated 10.07.2024.

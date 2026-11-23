@@ -1,0 +1,68 @@
+[project]
+name = "agent-orchestrator"
+version = "0.1.0"
+description = "GST input-tax-credit reconciliation agents: an LLM reads and proposes, a deterministic policy decides, a person approves."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = "MIT"
+authors = [{ name = "Goutham Tiwari", email = "227244284+GouthamTiwari@users.noreply.github.com" }]
+dependencies = [
+    "pydantic>=2.14",
+    "pyyaml>=6.0",
+    "langgraph>=1.2.24",
+    "langgraph-checkpoint-sqlite>=3.1.3",
+    "mcp>=2.3.0",
+    "boto3>=1.40",
+    "anthropic>=1.0",
+    "pypdfium2>=5.0",
+    "pillow>=11.0",
+    "rapidfuzz>=3.10",
+    "fastapi>=0.165",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.20",
+    "uvicorn>=0.32",
+    "prometheus-client>=0.21",
+    "typer>=0.15",
+    "python-dotenv>=1.0",
+]
+
+[project.urls]
+Repository = "https://github.com/GouthamTiwari/agent-orchestrator"
+Documentation = "https://github.com/GouthamTiwari/agent-orchestrator/blob/main/docs/SPEC.md"
+
+[project.scripts]
+orchestrator = "agent_orchestrator.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "hypothesis>=6.120",
+    "ruff>=0.8",
+    "reportlab>=4.2",
+    "httpx>=0.28",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agent_orchestrator"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# data/seed is kept byte for byte from the original kit (the seed generator and the GSTIN
+# checksum reference), so the linter must not rewrite it.
+extend-exclude = ["_kit", "data/seed", "*.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not live and not slow'"
+markers = [
+    "live: calls a paid API (Bedrock or Anthropic); run only on purpose",
+    "slow: long property-test runs",
+]
