@@ -16,7 +16,7 @@ Sources were read on **2026-11-23** on the official CBIC tax information portal 
 | `cgst_act_s34` | CGST Act, s.34: credit and debit notes | https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_CGST_act/active/chapter7/section34_v1.00.html | 2026-11-23 |
 | `cgst_act_s38` | CGST Act, s.38: communication of inward supplies and ITC (GSTR-2B), as substituted w.e.f. 1 Oct 2022 | https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_CGST_act/active/chapter9/section38_v1.00.html | 2026-11-23 |
 | `cgst_act_s77` | CGST Act, s.77: tax paid under the wrong head (intra- vs inter-state) | https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_CGST_act/active/chapter15/section77_v1.00.html | 2026-11-23 |
-| `igst_act_s19` | IGST Act 2017, s.19: mirror of s.77 for IGST | https://cbic-gst.gov.in/aces/Documents/IGST-bill.pdf (s.19) | 2026-11-23 (search excerpt; full text re-check in Task 10) |
+| `igst_act_s19` | IGST Act 2017, s.19: mirror of s.77 for IGST (refund when inter-State is later held intra-State; no interest in the reverse case) | https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_IGST_Act/documents/Integrated_Goods_And_Services_Tax_Act,_2017_27-March-2020.html (consolidated text, s.19 unamended) | 2026-11-25 (full text saved in `data/rules/sources/igst_act_s19.txt`) |
 | `cgst_rules_r36` | CGST Rules 2017, r.36: documents and conditions for ITC, incl. (2) proviso and (4) (GSTR-1/IFF + GSTR-2B) | https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter5/rule36_v1.00.html | 2026-11-23 |
 | `cgst_rules_r37a` | CGST Rules, r.37A: reversal if the supplier has not filed GSTR-3B by 30 September | https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter5/rule37a_v1.00.html | 2026-11-23 |
 | `cgst_rules_r46` | CGST Rules, r.46: particulars of a tax invoice (GSTINs, serial number ≤ 16 chars, taxes by head) | https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter6/rule46_v1.00.html | 2026-11-23 |
@@ -51,11 +51,12 @@ Outcome precedence: `block` > `require_approval` > `auto_allow`. If no rule fire
 |---|---|---|
 | `SAFE-INJ-01` | Any injection hit on the document (text layer, `other_text` or any field) blocks every automatic action, including auto-closing a perfect match. | **block** (case → `needs_human`) |
 | `SAFE-ALLOW-01` | The proposed action is not in `allowed_actions` for this mismatch type. | **block** |
-| `SAFE-CONF-01` | Lowest critical-field confidence after escalation is below 0.85. | **require_approval** |
+| `SAFE-CONF-01` | Lowest critical-field confidence after escalation is below 0.85, or there is no usable extraction at all (counts as 0). Nothing is automatic without a confident read of the invoice. | **require_approval** |
 | `SAFE-PDF-01` | The invoice disagrees with both the books and 2B. | **require_approval** |
 | `SAFE-PLAN-01` | The planner failed validation after retries (fallback proposal `escalate_human`). | **require_approval** |
 | `SAFE-BUDGET-01` | The run stopped new LLM work because of its budget before this case was finished. | **require_approval** |
-| `SAFE-NOPDF-01` | No invoice PDF for a case that would otherwise be auto-actioned. | **require_approval** |
+| `SAFE-NOPDF-01` | No invoice PDF for the case: never auto-actioned. | **require_approval** |
+| `SAFE-MATCH-01` | The pair was matched by similarity (fuzzy pass), the match was ambiguous, or the matcher already sent the case to a person: a person confirms it is the same invoice. | **require_approval** |
 
 ### 2.3 Business and data-quality rules
 

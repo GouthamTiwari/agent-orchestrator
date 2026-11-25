@@ -1,0 +1,219 @@
+# Policy v1 for GST ITC reconciliation (docs/SPEC.md section 7, docs/POLICY_RULES.md).
+# This file decides; the LLM only proposes. Not tax advice: where the law is unclear or a
+# judgement is needed, the outcome is require_approval.
+#
+# Precedence: block > require_approval > auto_allow. If no rule fires: require_approval.
+# auto_allow happens only when an auto_allow rule fired and no stricter rule did.
+
+version: "1.0.0"
+checked_on: "2026-11-25"
+
+defaults:
+  outcome_if_no_rule_fires: require_approval    # fail closed
+  auto_hold_max_tax_paise: 5000000              # Rs 50,000 of tax at risk (decision 1, business setting)
+  min_extraction_confidence: 0.85
+
+allowed_actions:                                # what a proposal may choose, per mismatch type
+  none: [none]
+  rounding_within_tolerance: [none]
+  invoice_no_format_difference: [none]
+  missing_in_2b: [chase_supplier_and_hold_itc, escalate_human]
+  in_2b_not_in_books: [escalate_human]
+  taxable_value_mismatch: [verify_with_supplier, escalate_human]
+  tax_amount_mismatch: [verify_with_supplier, escalate_human]
+  gstin_typo_in_books: [correct_books, escalate_human]
+  tax_head_mismatch: [escalate_human, correct_books]
+  duplicate_in_books: [correct_books, escalate_human]
+  date_mismatch_other_period: [escalate_human]
+
+rules:
+  # ---------------------------------------------------------------- legal
+  - id: GST-ITC-OK-01
+    kind: legal
+    description: >-
+      Credit is available when the buyer holds the invoice and the supplier's details reached
+      the buyer in GSTR-2B. Books, 2B and invoice agree (within Rs 1), so nothing needs doing.
+    when:
+      all:
+        - {fact: case.mismatch_type, op: in, value: [none, rounding_within_tolerance, invoice_no_format_difference]}
+        - {fact: proposal.action, op: eq, value: none}
+    outcome: auto_allow
+    unless: [SAFE-INJ-01, SAFE-CONF-01, SAFE-PDF-01, SAFE-NOPDF-01, SAFE-MATCH-01]
+    sources:
+      - {id: cgst_act_s16, section: "16(2)(a), 16(2)(aa)", url: "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_CGST_act/active/chapter5/section16_v1.00.html", checked_on: "2026-11-23"}
+      - {id: cgst_rules_r36, section: "36(4)", url: "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter5/rule36_v1.00.html", checked_on: "2026-11-23"}
+
+  - id: GST-ITC-2B-01
+    kind: legal
+    description: >-
+      No credit unless the supplier reported the invoice and it was communicated in GSTR-2B.
+      Until it appears, hold the credit and ask the supplier to report it.
+    when:
+      all:
+        - {fact: case.mismatch_type, op: eq, value: missing_in_2b}
+        - {fact: proposal.action, op: eq, value: chase_supplier_and_hold_itc}
+    outcome: auto_allow
+    unless: [SAFE-INJ-01, SAFE-CONF-01, BUS-AMT-01, SAFE-NOPDF-01]
+    sources:
+      - {id: cgst_act_s16, section: "16(2)(aa)", url: "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_CGST_act/active/chapter5/section16_v1.00.html", checked_on: "2026-11-23"}
+      - {id: cgst_rules_r36, section: "36(4)", url: "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter5/rule36_v1.00.html", checked_on: "2026-11-23"}
+      - {id: cgst_rules_r60, section: "60(7)", url: "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter8/rule60_v1.00.html", checked_on: "2026-11-23"}
+
+  - id: GST-ITC-RCPT-01
+    kind: legal
+    description: >-
+      Credit needs actual receipt of the goods or services. A purchase the supplier reported
+      but the books never recorded cannot be confirmed from data alone.
+    when: {fact: case.mismatch_type, op: eq, value: in_2b_not_in_books}
+    outcome: require_approval
+    sources:
+      - {id: cgst_act_s16, section: "16(2)(b)", url: "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_CGST_act/active/chapter5/section16_v1.00.html", checked_on: "2026-11-23"}
+
+  - id: GST-ITC-DOC-01
+    kind: legal
+    description: >-
+      Credit needs a tax invoice in the buyer's possession carrying the prescribed particulars.
+      An invoice that could not be read is not evidence of them.
+    when: {fact: extraction.failed, op: eq, value: true}
+    outcome: require_approval
+    sources:
+      - {id: cgst_act_s16, section: "16(2)(a)", url: "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_CGST_act/active/chapter5/section16_v1.00.html", checked_on: "2026-11-23"}
+      - {id: cgst_rules_r36, section: "36(1)(a), 36(2) proviso", url: "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter5/rule36_v1.00.html", checked_on: "2026-11-23"}
+      - {id: cgst_rules_r46, section: "46", url: "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter6/rule46_v1.00.html", checked_on: "2026-11-23"}
+
+  - id: GST-ITC-VAL-01
+    kind: legal
+    description: >-
+      When the books and the supplier's figures differ, the supplier corrects with a credit or
+      debit note; the buyer verifies before claiming.
+    when: {fact: case.mismatch_type, op: in, value: [taxable_value_mismatch, tax_amount_mismatch]}
+    outcome: require_approval
+    sources:
+      - {id: cgst_act_s34, section: "34", url: "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_CGST_act/active/chapter7/section34_v1.00.html", checked_on: "2026-11-23"}
+      - {id: cgst_rules_r36, section: "36(4)", url: "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter5/rule36_v1.00.html", checked_on: "2026-11-23"}
+
+  - id: GST-INV-GSTIN-01
+    kind: legal
+    description: >-
+      The invoice must carry the supplier's GSTIN. A books GSTIN that fails the checksum is our
+      typo, and changing the books is a human decision.
+    when: {fact: case.mismatch_type, op: eq, value: gstin_typo_in_books}
+    outcome: require_approval
+    sources:
+      - {id: cgst_rules_r46, section: "46(a)", url: "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter6/rule46_v1.00.html", checked_on: "2026-11-23"}
+      - {id: cgst_rules_r36, section: "36(2) proviso", url: "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/rules/cgst_rules/active/chapter5/rule36_v1.00.html", checked_on: "2026-11-23"}
+
+  - id: GST-HEAD-01
+    kind: legal
+    description: >-
+      Intra-state (CGST+SGST) versus inter-state (IGST) is a place-of-supply question; tax under
+      the wrong head is corrected through the refund route, not by relabelling.
+    when: {fact: case.mismatch_type, op: eq, value: tax_head_mismatch}
+    outcome: require_approval
+    sources:
+      - {id: cgst_act_s77, section: "77", url: "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_CGST_act/active/chapter15/section77_v1.00.html", checked_on: "2026-11-23"}
+      - {id: igst_act_s19, section: "19", url: "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_IGST_Act/documents/Integrated_Goods_And_Services_Tax_Act,_2017_27-March-2020.html", checked_on: "2026-11-25"}
+
+  - id: GST-TIME-01
+    kind: legal
+    description: >-
+      Credit cannot be taken after 30 November following the end of the financial year (or the
+      annual return, if earlier). An invoice reported in another month needs a person to check
+      whether it was already claimed and whether time remains.
+    when: {fact: case.mismatch_type, op: eq, value: date_mismatch_other_period}
+    outcome: require_approval
+    sources:
+      - {id: cgst_act_s16, section: "16(4)", url: "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_CGST_act/active/chapter5/section16_v1.00.html", checked_on: "2026-11-23"}
+
+  - id: GST-DUP-01
+    kind: legal
+    description: >-
+      Credit is tied to an invoice held by the buyer; a second book line for the same invoice
+      has no second invoice behind it. The Act does not say "duplicate", so a person decides.
+    when: {fact: case.mismatch_type, op: eq, value: duplicate_in_books}
+    outcome: require_approval
+    sources:
+      - {id: cgst_act_s16, section: "16(2)(a)", url: "https://taxinformation.cbic.gov.in/content/html/tax_repository/gst/acts/2017_CGST_act/active/chapter5/section16_v1.00.html", checked_on: "2026-11-23"}
+
+  # ---------------------------------------------------------------- safety
+  - id: SAFE-INJ-01
+    kind: safety
+    description: >-
+      Any injection hit on the document (text layer, other text or any field) blocks every
+      automatic action, including auto-closing a perfect match.
+    when: {fact: case.injection, op: eq, value: true}
+    outcome: block
+    design_ref: "SPEC 13"
+
+  - id: SAFE-ALLOW-01
+    kind: safety
+    description: The proposed action is not allowed for this mismatch type.
+    when: {fact: proposal.allowed, op: eq, value: false}
+    outcome: block
+    design_ref: "SPEC 7.2 step 1"
+
+  - id: SAFE-CONF-01
+    kind: safety
+    description: >-
+      The lowest critical-field confidence after escalation is below 0.85, or there is no
+      usable extraction at all (which counts as confidence 0). Nothing is automatic without a
+      confident read of the invoice.
+    when: {fact: extraction.min_confidence, op: lt, value: 0.85}
+    outcome: require_approval
+    design_ref: "SPEC 6.2 step 6"
+
+  - id: SAFE-PDF-01
+    kind: safety
+    description: The invoice disagrees with both the books and 2B.
+    when: {fact: case.pdf_disagrees, op: eq, value: true}
+    outcome: require_approval
+    design_ref: "SPEC 6.3"
+
+  - id: SAFE-PLAN-01
+    kind: safety
+    description: The planner failed validation after retries; its proposal is the fallback.
+    when: {fact: proposal.fallback, op: eq, value: true}
+    outcome: require_approval
+    design_ref: "SPEC 6.5"
+
+  - id: SAFE-BUDGET-01
+    kind: safety
+    description: The run stopped new LLM work because of its budget before this case finished.
+    when: {fact: run.budget_stopped, op: eq, value: true}
+    outcome: require_approval
+    design_ref: "SPEC 8.3"
+
+  - id: SAFE-NOPDF-01
+    kind: safety
+    description: A case with no invoice PDF is never auto-actioned.
+    when: {fact: case.has_pdf, op: eq, value: false}
+    outcome: require_approval
+    design_ref: "SPEC 6.6"
+
+  - id: SAFE-MATCH-01
+    kind: safety
+    description: >-
+      The pair was matched by similarity (fuzzy pass) or the match was ambiguous: a person
+      confirms it is the same invoice before anything is closed.
+    when:
+      any:
+        - {fact: case.fuzzy_match, op: eq, value: true}
+        - {fact: case.ambiguous_match, op: eq, value: true}
+        - {fact: case.status, op: eq, value: needs_human}
+    outcome: require_approval
+    design_ref: "SPEC 6.3"
+
+  # ---------------------------------------------------------------- business / data quality
+  - id: BUS-AMT-01
+    kind: business
+    description: Tax at risk above Rs 50,000 always gets a human look, even for an automatic hold.
+    when: {fact: case.itc_at_risk_paise, op: gt, value: 5000000}
+    outcome: require_approval
+    design_ref: "SPEC 19 decision 1"
+
+  - id: DQ-GSTIN-01
+    kind: data_quality
+    description: A books GSTIN failing the checksum flags the case; no automatic action relies on it.
+    when: {fact: case.gstin_invalid, op: eq, value: true}
+    outcome: require_approval
+    design_ref: "SPEC 4.4"

@@ -11,3 +11,4 @@ One line per merged task. Details in `docs/changelogs/`.
 - 07 · LLM client layer: one client for Bedrock Nova, Claude and a fake; cost estimates, project and run budgets, full-jitter retries, pacer, paid-call ledger, record/replay. Live probes: USD 0.00084.
 - 08 · Interfaces: Guard, RuleRetriever and Cache protocols; invoice injection rules, JSON validation, BM25 over citable CBIC snippets, SQLite cache; adapters for llm-guardrails (pinned v1.0.0), Regulatory RAG and semantic-cache with clear fallbacks.
 - 09 · Extraction agent: renders the invoice, asks the vision model for JSON (no document text in prompts), schema guard with 2 retries, value normalisation, deterministic checks that lower confidence, one escalation, injection scan of text layer, fields and other text.
+- 10 · Policy engine: 19 cited rules in YAML (no eval), strictest-wins with fail-closed default, independent-oracle property tests (found and fixed one gap), doc-sync test, full IGST s.19 text.
