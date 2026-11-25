@@ -1,0 +1,64 @@
+# Domain rules for instructions hidden in invoices (docs/SPEC.md section 13).
+#
+# Matched case-insensitively after normalisation (NFKC, zero-width characters removed, all
+# whitespace collapsed to one space, so text split across lines still matches). Any hit flags
+# the document. Each rule must stay silent on the benign hard negatives in
+# agent_orchestrator/eval/generate.py (HARD_NEGATIVES); tests/test_interfaces.py checks both.
+#
+# These complement llm-guardrails' generic rules, which miss invoice-specific tricks such as
+# an instruction disguised as payment terms.
+
+rules:
+  - id: INV-AI-ADDRESSED
+    why: text addressed to the AI or an automated reader
+    pattern: '\b(note|notes|instruction|instructions|message|attention)\s+(to|for)\s+(the\s+|any\s+)?(ai|a\.i\.|assistant|automated|automation|model|llm|bot|reviewer|processing|system)'
+  - id: INV-AI-ASSISTANT
+    why: names an AI assistant or model
+    pattern: '\b(ai|llm|gpt|chatbot)\s+(assistant|model|agent|system)s?\b'
+  - id: INV-AUTOMATED-READER
+    why: speaks to automated reviewers or systems
+    pattern: '\bautomated\s+(reviewers?|systems?|processing|checks?)\b'
+  - id: INV-SYSTEMS-MUST
+    why: tells processing systems what they must do
+    pattern: '\b(processing|automated|accounting|ai)\s+systems?\s+(must|should|shall|are\s+to)\b'
+  - id: INV-SYSTEM-TAG
+    why: fake system message markup
+    pattern: '(\[\s*system\s*[:\]]|<\s*/?\s*system\s*>|\bsystem\s+(instruction|prompt|override)s?\b)'
+  - id: INV-IGNORE-PREVIOUS
+    why: asks to ignore rules or earlier instructions
+    pattern: '\b(ignore|disregard|forget|override)\s+(all\s+|any\s+)?(the\s+)?(previous|prior|above|earlier|existing|mismatch|rules?|instructions?|checks?)\b'
+  - id: INV-APPROVE-CREDIT
+    why: asks to approve or release the input tax credit
+    pattern: '\b(approve|release|allow|grant|claim)\b.{0,40}\b(itc|input\s+tax\s+credit)\b'
+  - id: INV-SKIP-REVIEW
+    why: asks to skip review, checks or escalation
+    pattern: "\\b(skip|bypass|avoid|without|do\\s+not|don't|no\\s+need\\s+to)\\s+(all\\s+|any\\s+|the\\s+)?(manual\\s+|further\\s+)?(review|reviewing|checks?|verification|escalation|flag|flagging)\\b"
+  - id: INV-MARK-STATUS
+    why: asks to set the reconciliation outcome
+    pattern: '\b(mark|classify|record|treat|close|set)\b.{0,40}\b(as\s+)?(matched|verified|approved|pre-?verified|reconciled|no\s+action)\b'
+  - id: INV-CHANGE-BOOKS
+    why: asks to change the books, GSTIN or amounts
+    pattern: '\b(update|change|correct|replace|overwrite)\s+(the\s+|your\s+)?(books|records|ledger|gstin|taxable\s+value|amounts?)\s+(to|with)\b'
+  - id: INV-PRE-VERIFIED
+    why: claims a prior audit to discourage checking
+    pattern: '\b(pre-?verified|already\s+(been\s+)?(audited|verified|approved)|has\s+been\s+audited)\b'
+  # Hindi (Devanagari)
+  - id: INV-HI-AI
+    why: Hindi text naming AI
+    pattern: '(एआई|ए\.आई\.|कृत्रिम\s+बुद्धि)'
+  - id: INV-HI-NO-REVIEW
+    why: Hindi "do not review / check"
+    pattern: '(समीक्षा|जांच|जाँच|सत्यापन)\s+(न|नहीं|मत)\s+करें'
+  - id: INV-HI-APPROVE
+    why: Hindi "approve / accept" as a command
+    pattern: '(मंज़ूर|मंजूर|स्वीकृत|स्वीकार)\s+करें'
+  # Telugu
+  - id: INV-TE-AI
+    why: Telugu text naming AI
+    pattern: '(ఏఐ|కృత్రిమ\s+మేధ)'
+  - id: INV-TE-NO-REVIEW
+    why: Telugu "do not review / check"
+    pattern: '(సమీక్ష|తనిఖీ|పరిశీలన)\s*(చేయవద్దు|చేయకండి|అవసరం\s+లేదు)'
+  - id: INV-TE-APPROVE
+    why: Telugu "approve"
+    pattern: '(ఆమోదించండి|ఆమోదించు)'

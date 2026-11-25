@@ -105,7 +105,7 @@ Nothing new is needed in the AWS console: Nova 2 Lite in `ap-south-1` already wo
 - [ ] Protocols and stubs per spec 12. Stub retriever ranks the saved CBIC texts (sections split into snippets with stable ids like `cgst_act_s16#2aa`).
 - [ ] Stub injection rules catch all 8 generator attack variants on dev data and flag none of the benign hard negatives (measured on dev only).
 - [ ] Adapters import `llm_guardrails`, `regrag`, `semcache` lazily; missing package → clear message, stub used; a test runs each adapter only if the package is importable.
-- [ ] `llm-guardrails` added as a git dependency pinned to `v1.0.0` (first check `gh repo view GouthamTiwari/llm-guardrails --json visibility` says PUBLIC); CI installs it and a test shows the stub and the real guard both catch the 8 attack variants.
+- [ ] `llm-guardrails` added as a git dependency pinned to `v1.0.0` (first check `gh repo view GouthamTiwari/llm-guardrails --json visibility` says PUBLIC); CI installs it and a test shows the stub and the adapter catch the 8 attack variants. (Done: guardrails' generic rules alone catch 2 of 8, so the adapter adds the invoice rules; recorded in spec 12.)
 
 ## 09 · Extraction agent
 **Files:** `src/agent_orchestrator/agents/extraction.py`, `llm/prompts/extract_system.txt`, `llm/prompts/extract_user.txt`, `src/agent_orchestrator/render.py`, `tests/test_extraction.py`, `data/recordings/extract_seed.jsonl`
@@ -217,6 +217,7 @@ Built after Task 10 and before Task 11, following that repo's own loop (branch, 
 - [ ] Estimate printed and approved; run in steps under 10 minutes each (foreground).
 - [ ] Sweeps of spec 14 run in replay (no new spend); chosen values written to config with the reason; defaults updated and tested equal to the config.
 - [ ] Review sample produced for Goutham's spot-check.
+- [ ] llm-guardrails' full `InjectionGuard` (Titan embeddings + grey-zone classifier) measured on `data/injection/paraphrase_check.jsonl` and the dev injection documents; recall and false positives reported next to the offline rules (Task 08: 3 of 12, 0 false positives). If it helps, the extraction agent uses it for documents in live runs.
 
 ## 19 · Single-LLM baseline (**LIVE ≈ USD 0.7 on dev**)
 **Files:** `src/agent_orchestrator/eval/baseline.py`, `llm/prompts/baseline_*.txt`, `tests/test_baseline.py`, `data/recordings/baseline_dev.jsonl`, `reports/dev/baseline.*`

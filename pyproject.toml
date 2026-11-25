@@ -24,6 +24,7 @@ dependencies = [
     "prometheus-client>=0.21",
     "typer>=0.15",
     "python-dotenv>=1.0",
+    "llm-guardrails",
 ]
 
 [project.urls]
@@ -58,6 +59,8 @@ extend-exclude = ["_kit", "data/seed", "*.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+# SIM905 rewrites "a b c".split() into one very long list literal, which then breaks E501.
+ignore = ["SIM905"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -66,3 +69,6 @@ markers = [
     "live: calls a paid API (Bedrock or Anthropic); run only on purpose",
     "slow: long property-test runs",
 ]
+
+[tool.uv.sources]
+llm-guardrails = { git = "https://github.com/GouthamTiwari/llm-guardrails", rev = "v1.0.0" }
