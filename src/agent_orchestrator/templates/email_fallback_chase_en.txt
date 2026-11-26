@@ -1,0 +1,11 @@
+Subject: GST invoice $invoice_no is not in our GSTR-2B for $period_label
+Dear $supplier_name,
+
+Our purchase records include your invoice $invoice_no dated $invoice_date (GSTIN $supplier_gstin), with a taxable value of $taxable and GST of $tax. This invoice does not appear in our GSTR-2B for $period_label.
+
+Please report it in your GSTR-1 (or IFF) so that it reaches our GSTR-2B. Until then we are holding the input tax credit on this invoice.
+
+Please reply to confirm once it has been filed.
+
+Regards,
+Accounts team

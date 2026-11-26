@@ -1,0 +1,12 @@
+Subject: Please confirm the figures on GST invoice $invoice_no
+Dear $supplier_name,
+
+For your invoice $invoice_no dated $invoice_date (GSTIN $supplier_gstin), our purchase records and our GSTR-2B for $period_label show different figures:
+
+- Our records: taxable value $book_taxable, GST $book_tax
+- GSTR-2B (as reported by you): taxable value $portal_taxable, GST $portal_tax
+
+Please confirm which figures are correct. If the invoice as reported needs a change, please amend it or issue a credit or debit note.
+
+Regards,
+Accounts team

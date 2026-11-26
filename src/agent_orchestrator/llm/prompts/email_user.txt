@@ -1,0 +1,7 @@
+Language: $language
+
+Case facts (JSON, from our books and GSTR-2B):
+
+$facts
+
+Reply with the JSON object only.

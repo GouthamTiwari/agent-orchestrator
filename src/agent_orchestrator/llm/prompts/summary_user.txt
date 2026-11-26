@@ -1,0 +1,5 @@
+Month totals (JSON, produced by code):
+
+$totals
+
+Reply with the JSON object only.
