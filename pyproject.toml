@@ -27,6 +27,11 @@ dependencies = [
     "llm-guardrails",
 ]
 
+[project.optional-dependencies]
+# Regulatory RAG as the rule source (spec 6.4, decision 7). Needs its Docker Postgres and AWS;
+# without it the saved CBIC texts are used. Install with: uv sync --extra rag
+rag = ["regrag"]
+
 [project.urls]
 Repository = "https://github.com/GouthamTiwari/agent-orchestrator"
 Documentation = "https://github.com/GouthamTiwari/agent-orchestrator/blob/main/docs/SPEC.md"
@@ -72,3 +77,4 @@ markers = [
 
 [tool.uv.sources]
 llm-guardrails = { git = "https://github.com/GouthamTiwari/llm-guardrails", rev = "v1.0.0" }
+regrag = { git = "https://github.com/GouthamTiwari/regulatory-rag", rev = "v1.1.0" }

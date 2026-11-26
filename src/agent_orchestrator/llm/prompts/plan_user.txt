@@ -1,0 +1,14 @@
+Case facts (JSON, produced by code):
+
+$facts
+
+Rule passage ids you may cite: $rule_ids
+
+Summary of the rules:
+$summary
+
+Passages:
+
+$passages
+
+Reply with the JSON object only.

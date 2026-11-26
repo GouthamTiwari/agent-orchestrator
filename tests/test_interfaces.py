@@ -265,11 +265,76 @@ def test_loaders_pick_the_adapter_or_explain_the_fallback(monkeypatch):
     assert isinstance(cache, SqliteCache)
 
 
+@pytest.mark.live  # one embedding and one rerank call (a fraction of a cent)
 def test_regrag_adapter_when_installed():
     pytest.importorskip("regrag.api")
-    r = adapters.RegragRetriever()
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env")  # never printed
+    try:
+        r = adapters.RegragRetriever()
+    except adapters.AdapterUnavailable as exc:
+        pytest.skip(str(exc))
     hits = r.search("section 16(2)(aa)", 3)
     assert hits and r.get(hits[0].snippet_id) == hits[0]
+    assert hits[0].section == "16(2)(aa)"
+
+
+def fake_regrag(monkeypatch, version):
+    """A stand-in regrag.api module, so the adapter's own logic is tested offline."""
+    import sys
+    import types
+
+    pkg, api = types.ModuleType("regrag"), types.ModuleType("regrag.api")
+    api.search = lambda query, k=4, corpus="gst": []
+
+    def corpus_version():
+        if isinstance(version, Exception):
+            raise version
+        return version
+
+    api.corpus_version = corpus_version
+    pkg.api = api
+    monkeypatch.setitem(sys.modules, "regrag", pkg)
+    monkeypatch.setitem(sys.modules, "regrag.api", api)
+
+
+def test_regrag_without_its_database_falls_back_to_the_snapshot(monkeypatch):
+    fake_regrag(monkeypatch, ConnectionError("connection refused"))
+    monkeypatch.delenv(adapters.REGRAG_ENV_VAR, raising=False)
+    retriever, note = adapters.load_retriever()
+    assert isinstance(retriever, SnapshotRetriever)
+    assert "database not reachable (ConnectionError)" in note
+
+
+def test_regrag_corpus_version_is_read_once(monkeypatch):
+    fake_regrag(monkeypatch, "abc123")
+    monkeypatch.delenv(adapters.REGRAG_ENV_VAR, raising=False)
+    retriever, note = adapters.load_retriever()
+    assert isinstance(retriever, adapters.RegragRetriever) and "regulatory-rag" in note
+    assert retriever.corpus_version == "regrag-abc123"
+
+
+def test_regrag_env_file_sets_only_its_own_settings_and_overwrites_nothing(monkeypatch, tmp_path):
+    env = tmp_path / "regrag.env"
+    env.write_text(
+        "POSTGRES_PASSWORD=from-file\nPOSTGRES_DB=regrag\nAWS_ACCESS_KEY_ID=not-copied\n"
+        "DATABASE_URL=\n",
+        "utf-8",
+    )
+    for key in ("POSTGRES_PASSWORD", "AWS_ACCESS_KEY_ID", "DATABASE_URL"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("POSTGRES_DB", "already-set")
+    assert adapters.load_regrag_env(str(env)) == 1
+    import os
+
+    assert os.environ["POSTGRES_PASSWORD"] == "from-file"
+    assert os.environ["POSTGRES_DB"] == "already-set"
+    assert "AWS_ACCESS_KEY_ID" not in os.environ and "DATABASE_URL" not in os.environ
+    monkeypatch.delenv(adapters.REGRAG_ENV_VAR, raising=False)
+    assert adapters.load_regrag_env() == 0  # not configured: nothing to do
+    with pytest.raises(adapters.AdapterUnavailable, match="missing file"):
+        adapters.load_regrag_env(str(tmp_path / "nope.env"))
 
 
 def test_semcache_adapter_when_installed():

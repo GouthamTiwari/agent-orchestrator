@@ -1,0 +1,10 @@
+Mismatch type: $mismatch_type
+What it means: $meaning
+
+Passage ids you may cite: $ids
+
+Passages:
+
+$passages
+
+Reply with the JSON object only.

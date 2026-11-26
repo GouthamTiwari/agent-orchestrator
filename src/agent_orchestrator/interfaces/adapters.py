@@ -17,8 +17,10 @@ import datetime as dt
 import importlib
 import json
 import logging
+import os
 import uuid
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
@@ -87,20 +89,66 @@ class GuardrailsGuard:
 # --- Regulatory RAG ---------------------------------------------------------------------------
 
 
+REGRAG_ENV_VAR = "REGULATORY_RAG_ENV_FILE"
+# Only the settings regrag needs beyond AWS credentials (which this project's own .env has).
+REGRAG_KEYS = (
+    "POSTGRES_USER",
+    "POSTGRES_PASSWORD",
+    "POSTGRES_DB",
+    "POSTGRES_PORT",
+    "DATABASE_URL",
+    "BEDROCK_RERANK_REGION",
+    "BEDROCK_EMBED_MODEL_ID",
+    "BEDROCK_RERANK_MODEL_ID",
+)
+
+
+def load_regrag_env(path: str | None = None) -> int:
+    """Copy regrag's database and model settings from its own ``.env`` into this process,
+    without overwriting anything already set. Returns how many were set (values never logged).
+    An installed package cannot find its project's ``.env`` by itself."""
+    path = path or os.environ.get(REGRAG_ENV_VAR, "").strip()
+    if not path:
+        return 0
+    if not Path(path).is_file():
+        raise AdapterUnavailable(f"{REGRAG_ENV_VAR} points to a missing file")
+    from dotenv import dotenv_values
+
+    count = 0
+    for key, value in dotenv_values(path).items():
+        if key in REGRAG_KEYS and value and not os.environ.get(key):
+            os.environ[key] = value
+            count += 1
+    return count
+
+
 class RegragRetriever:
     name = "regulatory-rag"
 
-    def __init__(self) -> None:
+    def __init__(self, env_file: str | None = None, probe: bool = True) -> None:
+        load_regrag_env(env_file)
         api = _import("regrag.api", "Regulatory RAG v1.1.0 with regrag.api (tasks R1-R4)")
         for fn in ("search", "corpus_version"):
             if not hasattr(api, fn):
                 raise AdapterUnavailable(f"regrag.api has no {fn}(); need regrag v1.1.0")
         self._api = api
         self._seen: dict[str, RuleSnippet] = {}
+        self._version: str | None = None
+        if probe:  # the package without its database is no retriever: use the snapshot
+            try:
+                self._version = f"regrag-{api.corpus_version()}"
+            except Exception as exc:
+                raise AdapterUnavailable(
+                    f"regrag database not reachable ({type(exc).__name__}); "
+                    "start it with `docker compose up -d` in the regulatory-rag folder"
+                ) from exc
 
     @property
     def corpus_version(self) -> str:
-        return f"regrag-{self._api.corpus_version()}"
+        # Read once: the corpus does not change during a run, and every cache key uses it.
+        if self._version is None:
+            self._version = f"regrag-{self._api.corpus_version()}"
+        return self._version
 
     def search(self, query: str, k: int = 4) -> list[RuleSnippet]:
         out = []
