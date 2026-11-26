@@ -17,13 +17,21 @@ from PIL import Image, ImageEnhance, ImageFilter
 
 
 def rasterise(pdf_path: Path, dpi: int = 150) -> Image.Image:
-    """Render page 1 of a PDF to an RGB image."""
+    """Render page 1 of a PDF to an RGB image (on the one PDFium thread, see render.py)."""
+    from agent_orchestrator.render import on_pdfium_thread
+
+    return on_pdfium_thread(_rasterise, str(pdf_path), dpi)
+
+
+def _rasterise(pdf_path: str, dpi: int) -> Image.Image:
     import pypdfium2 as pdfium
 
-    pdf = pdfium.PdfDocument(str(pdf_path))
+    pdf = pdfium.PdfDocument(pdf_path)
     try:
         page = pdf[0]
-        image = page.render(scale=dpi / 72).to_pil().convert("RGB")
+        bitmap = page.render(scale=dpi / 72)
+        image = bitmap.to_pil().convert("RGB").copy()  # own the pixels before closing
+        bitmap.close()
         page.close()
     finally:
         pdf.close()

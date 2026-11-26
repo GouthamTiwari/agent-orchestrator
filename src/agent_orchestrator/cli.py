@@ -26,6 +26,85 @@ def version() -> None:
     typer.echo(__version__)
 
 
+def _print_result(result) -> None:
+    typer.echo(f"run {result.run_id}: {result.status}")
+    if result.pending:
+        typer.echo(
+            f"{len(result.pending)} approvals waiting. Decide them, then run "
+            f"'orchestrator resume {result.run_id}'."
+        )
+    typer.echo(f"report: {result.report}")
+
+
+@app.command()
+def run(
+    demo: Annotated[
+        bool, typer.Option(help="The seed month with the fake model (no AWS).")
+    ] = False,
+    data: Annotated[
+        Path | None,
+        typer.Option(help="Month folder: purchase_register.csv, gstr2b_like.json, invoices/."),
+    ] = None,
+    period: Annotated[str | None, typer.Option(help="YYYY-MM.")] = None,
+    business: Annotated[str, typer.Option(help="Business id.")] = "B",
+    live: Annotated[bool, typer.Option(help="Call the real model (costs money).")] = False,
+    provider: Annotated[str, typer.Option(help="bedrock or anthropic (with --live).")] = "bedrock",
+    yes: Annotated[bool, typer.Option(help="Do not ask before a live run.")] = False,
+    rag: Annotated[bool, typer.Option(help="Use Regulatory RAG if it is available.")] = False,
+    run_id: Annotated[str | None, typer.Option(help="Run id (default: generated).")] = None,
+    db: Annotated[Path | None, typer.Option(help="SQLite file.")] = None,
+    runs_dir: Annotated[Path | None, typer.Option(help="Where reports go.")] = None,
+) -> None:
+    """Run one business-month until the approval gate (or the end)."""
+    from agent_orchestrator.orchestrator import runner
+
+    if demo:
+        if live:
+            raise typer.BadParameter("--demo always uses the fake model; drop --live")
+        cfg = runner.demo_config(run_id, use_rag=rag)
+    else:
+        if data is None or period is None:
+            raise typer.BadParameter("give --demo, or --data and --period")
+        cfg = runner.RunConfig(
+            run_id=run_id or runner.new_run_id(business, period),
+            business_id=business, period=period,
+            books_path=str(data / "purchase_register.csv"),
+            portal_path=str(data / "gstr2b_like.json"),
+            invoices_dir=str(data / "invoices") if (data / "invoices").is_dir() else None,
+            mode="live" if live else "replay", provider=provider, use_rag=rag,
+        )  # fmt: skip
+        if live and not yes:
+            typer.echo(
+                f"LIVE run with {provider}: real model calls, capped by the run budget "
+                f"(USD {cfg.budget_usd:.2f}) and the project cap."
+            )
+            if not typer.confirm("Continue?", default=False):
+                raise typer.Exit(1)
+    result = runner.start_run(
+        cfg, db_path=db or runner.DEFAULT_DB, runs_dir=runs_dir or runner.DEFAULT_RUNS
+    )
+    _print_result(result)
+
+
+@app.command()
+def resume(
+    run_id: str,
+    db: Annotated[Path | None, typer.Option(help="SQLite file.")] = None,
+    runs_dir: Annotated[Path | None, typer.Option(help="Where reports go.")] = None,
+) -> None:
+    """Continue a paused or interrupted run from its last checkpoint."""
+    from agent_orchestrator.orchestrator import runner
+
+    try:
+        result = runner.resume_run(
+            run_id, db_path=db or runner.DEFAULT_DB, runs_dir=runs_dir or runner.DEFAULT_RUNS
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+    _print_result(result)
+
+
 @dataset_app.command("generate")
 def dataset_generate(
     out: Annotated[

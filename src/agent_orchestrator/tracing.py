@@ -81,9 +81,12 @@ def _now() -> str:
 
 
 class Tracer:
-    def __init__(self, run_id: str, repo: Any | None = None) -> None:
+    def __init__(self, run_id: str, repo: Any | None = None, span_prefix: str = "") -> None:
         self.run_id = run_id
         self.repo = repo  # a store.repo.Repo, or None to keep spans in memory only
+        # A resumed run is a new process whose counter starts again at 1: a per-process
+        # prefix keeps its span ids distinct from the first process's.
+        self.span_prefix = span_prefix
         self.spans: list[Span] = []
         self._lock = threading.Lock()
         self._counter = 0
@@ -91,7 +94,7 @@ class Tracer:
     def _next_id(self) -> str:
         with self._lock:
             self._counter += 1
-            return f"s{self._counter:05d}"
+            return f"{self.span_prefix}s{self._counter:05d}"
 
     @contextmanager
     def span(

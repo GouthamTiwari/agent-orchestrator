@@ -138,11 +138,16 @@ MIGRATIONS: list[str] = [
 ]
 
 
-def connect(path: str | Path) -> sqlite3.Connection:
-    """Open the database with the project's settings. One connection per thread."""
+def connect(path: str | Path, *, check_same_thread: bool = True) -> sqlite3.Connection:
+    """Open the database with the project's settings. One connection per thread.
+
+    ``check_same_thread=False`` is only for a caller that keeps one connection per thread
+    itself (the runner's ``ThreadRepo``) and must close them all from the main thread."""
     if str(path) != ":memory:":
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(path), timeout=30, isolation_level=None)  # autocommit mode
+    conn = sqlite3.connect(  # autocommit mode
+        str(path), timeout=30, isolation_level=None, check_same_thread=check_same_thread
+    )
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
