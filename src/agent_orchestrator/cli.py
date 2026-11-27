@@ -105,6 +105,114 @@ def resume(
     _print_result(result)
 
 
+approvals_app = typer.Typer(help="Decide what the policy sent to a person.", no_args_is_help=True)
+app.add_typer(approvals_app, name="approvals")
+DbOption = Annotated[Path | None, typer.Option("--db", help="SQLite file.")]
+ByOption = Annotated[
+    str | None, typer.Option("--by", help="Your name (default APPROVER_NAME, else OS user).")
+]
+
+
+def _open_repo(db: Path | None):
+    from agent_orchestrator.orchestrator import runner
+    from agent_orchestrator.store.repo import Repo
+
+    path = db or runner.DEFAULT_DB
+    if not Path(path).exists():
+        raise typer.BadParameter(f"no database at {path}; run 'orchestrator run' first")
+    return Repo.open(path)
+
+
+def _human(fn, *args, **kwargs) -> None:
+    from agent_orchestrator.tools import toolfns
+
+    try:
+        done = fn(*args, **kwargs)
+    except toolfns.HumanActionError as exc:
+        typer.echo(f"Not done: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(
+        f"{done.approval_id}: {done.status} -> {done.final_action} by {done.decided_by}. "
+        f"When nothing is pending, run 'orchestrator resume {done.run_id}'."
+    )
+
+
+@approvals_app.command("list")
+def approvals_list(
+    run_id: Annotated[str | None, typer.Option("--run", help="Only this run.")] = None,
+    all_: Annotated[bool, typer.Option("--all", help="Include decided ones.")] = False,
+    db: DbOption = None,
+) -> None:
+    """Show approvals waiting for a person (oldest first)."""
+    repo = _open_repo(db)
+    try:
+        rows = repo.list_approvals(None if all_ else "pending", run_id)
+        for a in rows:
+            case = repo.conn.execute(
+                "SELECT mismatch_type FROM cases WHERE case_key = ?", (a.case_key,)
+            ).fetchone()
+            kind = case[0] if case else "?"
+            done = (
+                f" -> {a.final_action} ({a.status}, {a.decided_by})"
+                if a.status != "pending"
+                else ""
+            )
+            typer.echo(
+                f"{a.approval_id}  run {a.run_id}  {kind}  proposed {a.proposed}{done}  "
+                f"options: {', '.join(a.allowed_options)}"
+            )
+        typer.echo(f"{len(rows)} {'approvals' if all_ else 'pending'}")
+    finally:
+        repo.close()
+
+
+@approvals_app.command("approve")
+def approvals_approve(approval_id: str, by: ByOption = None, db: DbOption = None) -> None:
+    """Accept the proposed action."""
+    from agent_orchestrator.tools import toolfns
+
+    repo = _open_repo(db)
+    try:
+        _human(toolfns.approve, repo, approval_id, by=by)
+    finally:
+        repo.close()
+
+
+@approvals_app.command("edit")
+def approvals_edit(
+    approval_id: str,
+    action: Annotated[str, typer.Argument(help="One of the allowed options.")],
+    reason: Annotated[str, typer.Option(help="Why (required).")] = "",
+    by: ByOption = None,
+    db: DbOption = None,
+) -> None:
+    """Choose a different allowed action."""
+    from agent_orchestrator.tools import toolfns
+
+    repo = _open_repo(db)
+    try:
+        _human(toolfns.edit, repo, approval_id, action, reason=reason, by=by)
+    finally:
+        repo.close()
+
+
+@approvals_app.command("reject")
+def approvals_reject(
+    approval_id: str,
+    reason: Annotated[str, typer.Option(help="Why (required).")] = "",
+    by: ByOption = None,
+    db: DbOption = None,
+) -> None:
+    """Say no: the case stays with a person (escalate_human)."""
+    from agent_orchestrator.tools import toolfns
+
+    repo = _open_repo(db)
+    try:
+        _human(toolfns.reject, repo, approval_id, reason=reason, by=by)
+    finally:
+        repo.close()
+
+
 @dataset_app.command("generate")
 def dataset_generate(
     out: Annotated[

@@ -5,7 +5,7 @@ START → intake → fanout_extract ─Send(per PDF)→ extract_one ─→ join_
 join_extract → match → route_cases
 route_cases: clean matches → rule_propose (no LLM) → decide
              others        ─Send(per case)→ research_and_plan → decide
-decide → approval_gate if any approval is pending, else communicate
+decide → approval_gate if any case needs a person, else communicate
 approval_gate (interrupt) → apply_approvals → communicate → report → END
 ```
 
@@ -34,7 +34,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, Send, interrupt
 from pydantic import BaseModel
 
-from agent_orchestrator.agents.communicator import draft_email
+from agent_orchestrator.agents.communicator import eligible
 from agent_orchestrator.agents.extraction import extract_invoice
 from agent_orchestrator.agents.intake import run_intake
 from agent_orchestrator.agents.matcher import match
@@ -48,7 +48,7 @@ from agent_orchestrator.agents.reporter import (
 from agent_orchestrator.agents.research import CLEAN_TYPES, research_rules
 from agent_orchestrator.interfaces.protocols import Cache, Guard, RuleRetriever
 from agent_orchestrator.llm.budget import RunBudget
-from agent_orchestrator.models import ApprovalRecord, Case, ProposedAction
+from agent_orchestrator.models import ApprovalRecord, Case, Decision, ProposedAction
 from agent_orchestrator.orchestrator.state import (
     CHECKPOINT_TYPES,
     ExtractTask,
@@ -58,7 +58,8 @@ from agent_orchestrator.orchestrator.state import (
 )
 from agent_orchestrator.policy.engine import decide
 from agent_orchestrator.policy.schema import Policy
-from agent_orchestrator.store.idempotency import approval_key
+from agent_orchestrator.store.idempotency import approval_key, outbox_key
+from agent_orchestrator.tools import toolfns
 from agent_orchestrator.tracing import Tracer
 
 # LLM span purposes -> the agent they belong to, for the cost-per-agent table.
@@ -250,18 +251,21 @@ def build_graph(deps: Deps) -> StateGraph:
                     set(c.flags)
                     | set(note.flags if note else ())
                     | ({"budget_stop"} if stopped else set())
+                    | ({"injection"} if ex is not None and ex.injection.flagged else set())
                 )
                 c = c.model_copy(update={
                     "flags": sorted(flags), "status": "needs_human" if stopped else c.status,
                 })  # fmt: skip
                 d = decide(c, p, extraction=ex, policy=deps.policy, budget_stopped=stopped,
                            fallback=bool(note and note.fallback))  # fmt: skip
+                if d.outcome == "block":  # nothing automatic; a person must look at it
+                    c = c.model_copy(update={"status": "needs_human"})
                 deps.repo.record_decision(deps.run_id, d)
                 deps.repo.upsert_case(
                     deps.run_id, c, action=d.action if d.outcome == "auto_allow" else None
                 )
                 if d.outcome == "require_approval":
-                    approval_ids.append(_request_approval(c, p, m).approval_id)
+                    approval_ids.append(_request_approval(c, d, m).approval_id)
                 cases.append(c)
                 decisions.append(d)
             outcomes = defaultdict(int)
@@ -270,21 +274,31 @@ def build_graph(deps: Deps) -> StateGraph:
             s.set_output(", ".join(f"{k} {v}" for k, v in sorted(outcomes.items())))
         return {"cases": cases, "decisions": decisions, "approval_ids": approval_ids}
 
-    def _request_approval(c: Case, p: ProposedAction, m: MonthInput) -> ApprovalRecord:
-        """Idempotent: the same case, action and facts find the existing row (spec 9.2), even
-        one a person already decided in an earlier run of the same month."""
-        key = approval_key(m.business_id, m.period, c.case_key, p.action, c.facts_hash)
-        options = list(dict.fromkeys(
-            [p.action, *deps.policy.allowed_actions[c.mismatch_type], "escalate_human"]
-        ))  # fmt: skip
-        record = ApprovalRecord(approval_id=f"ap_{key[:16]}", idempotency_key=key,
-                                case_key=c.case_key, run_id=deps.run_id, proposed=p.action,
-                                allowed_options=options)  # fmt: skip
-        stored, _ = deps.repo.insert_approval(record, m.business_id, m.period)
-        return stored
+    def _request_approval(c: Case, d: Decision, m: MonthInput) -> ApprovalRecord:
+        """Through the write tool, which checks the stored decision. Idempotent: the same case,
+        action and facts find the existing row (spec 9.2), even one a person already decided
+        in an earlier run of the same month."""
+        out = toolfns.request_approval(
+            tool_ctx(),
+            idempotency_key=approval_key(m.business_id, m.period, c.case_key, d.action,
+                                         c.facts_hash),
+            run_id=deps.run_id,
+            case_key=c.case_key,
+            decision_ref=toolfns.decision_ref(deps.run_id, d),
+            allowed_options=list(deps.policy.allowed_actions[c.mismatch_type]),
+        )  # fmt: skip
+        return out["approval"]
+
+    def tool_ctx() -> toolfns.ToolContext:
+        m = deps.month
+        return toolfns.ToolContext(repo=deps.repo, guard=deps.guard, business_id=m.business_id,
+                                   period=m.period, email_client=deps.email_client)  # fmt: skip
 
     def after_decide(state: GraphState) -> str:
-        return "approval_gate" if _pending(state) else "communicate"
+        # Any case that needs a person goes through the gate, even when its approval was
+        # already decided in an earlier run of the month (then the gate passes straight on,
+        # and apply_approvals still applies that decision).
+        return "approval_gate" if state.get("approval_ids") else "communicate"
 
     def _pending(state: GraphState) -> list[str]:
         ids = state.get("approval_ids", [])
@@ -320,18 +334,27 @@ def build_graph(deps: Deps) -> StateGraph:
         decisions = _last_by_case(state.get("decisions", []))
         approvals = _last_by_case(state.get("approvals_resolved", []))
         drafts = []
+        ctx = tool_ctx()
         with t.span("communicator") as s:
             for c in state["cases"]:
+                d, a = decisions.get(c.case_key), approvals.get(c.case_key)
+                if d is None or not eligible(d, a):
+                    continue  # not asking the tool spares a refusal row for every other case
                 side = portal.get(c.portal_index) if c.portal_index is not None else None
-                side = side or (books[c.book_lines[0]] if c.book_lines else None)
-                language = deps.languages.get(side.supplier_gstin, "en") if side else "en"
-                res = draft_email(c, decision=decisions.get(c.case_key),
-                                  approval=approvals.get(c.case_key), books=books, portal=portal,
-                                  guard=deps.guard, client=deps.email_client,
-                                  language=language)  # fmt: skip
-                if res.draft is not None:
-                    stored, _ = deps.repo.insert_outbox(res.draft, deps.run_id)
-                    drafts.append(stored)
+                side = side or books[c.book_lines[0]]
+                action = a.final_action if a is not None and a.status != "pending" else d.action
+                out = toolfns.write_draft_email(
+                    ctx,
+                    idempotency_key=outbox_key(c.business_id, c.period, c.case_key, action,
+                                               side.supplier_gstin),
+                    run_id=deps.run_id,
+                    case_key=c.case_key,
+                    decision_ref=toolfns.decision_ref(deps.run_id, d),
+                    language=deps.languages.get(side.supplier_gstin, "en"),
+                    books=books,
+                    portal=portal,
+                )  # fmt: skip
+                drafts.append(out["draft"])
             s.set_output(f"{len(drafts)} drafts (none sent)")
         return {"drafts": drafts}
 

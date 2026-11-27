@@ -274,11 +274,14 @@ class RunResult:
     report: Path
 
 
-def _clients(cfg: RunConfig, repo: Any, budget: RunBudget, tracer: Tracer) -> dict[str, Any]:
+def _clients(
+    cfg: RunConfig, repo: Any, budget: RunBudget, tracer: Tracer, script: Any = None
+) -> dict[str, Any]:
     cache = PaidCallCache(repo)
     common = dict(run_budget=budget, cache=cache, tracer=tracer, run_id=cfg.run_id)
     if cfg.mode == "fake":
-        backend = FakeBackend(demo_script(cfg.month()), model_id="fake")
+        # ``script``: tests swap in another fake (for example one that obeys an injection).
+        backend = FakeBackend(script or demo_script(cfg.month()), model_id="fake")
         one = LLMClient(backend, mode="fake", **common)
         clients = {"extract": one, "text": one, "escalation": None}
     else:
@@ -315,13 +318,15 @@ def _clients(cfg: RunConfig, repo: Any, budget: RunBudget, tracer: Tracer) -> di
     return clients
 
 
-def build_deps(cfg: RunConfig, repo: Any, runs_dir: Path, db_path: Path) -> Deps:
+def build_deps(
+    cfg: RunConfig, repo: Any, runs_dir: Path, db_path: Path, script: Any = None
+) -> Deps:
     budget = RunBudget(usd=cfg.budget_usd, tokens=cfg.budget_tokens, seconds=cfg.budget_seconds)
     usd, tokens = run_spend(repo, cfg.run_id)
     if usd or tokens:
         budget.record(usd, tokens)  # a resumed run continues the same budget
     tracer = Tracer(cfg.run_id, repo, span_prefix=f"p{uuid.uuid4().hex[:6]}-")
-    clients = _clients(cfg, repo, budget, tracer)
+    clients = _clients(cfg, repo, budget, tracer, script)
     guard, _ = load_guard()
     retriever, _ = load_retriever(prefer_adapter=cfg.use_rag)
     return Deps(
@@ -340,11 +345,13 @@ def _graph_config(cfg: RunConfig) -> dict[str, Any]:
     }
 
 
-def _drive(cfg: RunConfig, db_path: Path, runs_dir: Path, graph_input: Any) -> RunResult:
+def _drive(
+    cfg: RunConfig, db_path: Path, runs_dir: Path, graph_input: Any, script: Any = None
+) -> RunResult:
     repo = ThreadRepo(db_path)
     saver, saver_conn = checkpointer(db_path)
     try:
-        deps = build_deps(cfg, repo, runs_dir, db_path)
+        deps = build_deps(cfg, repo, runs_dir, db_path, script)
         app = compile_graph(deps, saver)
         config = _graph_config(cfg)
         if graph_input is RESUME:
@@ -371,7 +378,9 @@ def _drive(cfg: RunConfig, db_path: Path, runs_dir: Path, graph_input: Any) -> R
         repo.close()
 
 
-def start_run(cfg: RunConfig, *, db_path: Path = DEFAULT_DB, runs_dir: Path = DEFAULT_RUNS):
+def start_run(
+    cfg: RunConfig, *, db_path: Path = DEFAULT_DB, runs_dir: Path = DEFAULT_RUNS, script: Any = None
+):
     db_path, runs_dir = Path(db_path), Path(runs_dir)
     cfg.save(runs_dir)
     repo = ThreadRepo(db_path)
@@ -387,10 +396,12 @@ def start_run(cfg: RunConfig, *, db_path: Path = DEFAULT_DB, runs_dir: Path = DE
     return _drive(cfg, db_path, runs_dir, initial_state(
         run_id=cfg.run_id, business_id=cfg.business_id, period=cfg.period,
         policy_version=policy_version(default_policy()),
-    ))  # fmt: skip
+     ), script)  # fmt: skip
 
 
-def resume_run(run_id: str, *, db_path: Path = DEFAULT_DB, runs_dir: Path = DEFAULT_RUNS):
+def resume_run(
+    run_id: str, *, db_path: Path = DEFAULT_DB, runs_dir: Path = DEFAULT_RUNS, script: Any = None
+):
     """Continue a paused or crashed run in this process.
 
     After a crash, the graph continues from its last checkpoint (``None`` input). At the
@@ -403,4 +414,4 @@ def resume_run(run_id: str, *, db_path: Path = DEFAULT_DB, runs_dir: Path = DEFA
         repo.update_run(run_id, status="running")
     finally:
         repo.close()
-    return _drive(cfg, db_path, runs_dir, RESUME)
+    return _drive(cfg, db_path, runs_dir, RESUME, script)
